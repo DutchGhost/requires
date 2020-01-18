@@ -41,3 +41,17 @@ pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     ).into()
 }
+
+#[proc_macro_attribute]
+pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let f = parse_macro_input!(item as syn::ItemFn);
+    
+    let vis = f.vis;
+    let sig = f.sig;
+    let block = f.block;
+
+    quote!(#vis #sig {
+        Self::validate();
+        #block
+    }).into()
+}

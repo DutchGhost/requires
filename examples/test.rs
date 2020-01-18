@@ -8,13 +8,14 @@ struct Validate<const P :usize, const Q: usize> {
 }
 
 impl <const P: usize, const Q: usize> Validate<{P}, {Q}> {
-    pub fn new(n: usize) -> Self {
+    #[validate]
+    pub fn new<T: Into<usize>>(n: T) -> Self {
         Self::validate();
 
-        Self { n }
+        Self { n: n.into() }
     }
 }
 
 fn main() {
-    Validate::<{11}, {9}>::new(0);
+    Validate::<{11}, {9}>::new(0usize);
 }
