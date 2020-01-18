@@ -3,29 +3,30 @@ use proc_macro::TokenStream;
 
 use quote::quote;
 
-use syn::{
-    parse_macro_input,
-};
+use syn::parse_macro_input;
 
 #[proc_macro_attribute]
 pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let expr = parse_macro_input!(_attr as syn::Expr);
     let strct = parse_macro_input!(item as syn::Item);
-    
+
     let strct = match strct {
         syn::Item::Struct(s) => s,
-        _ => panic!("Expected a struct!")
+        _ => panic!("Expected a struct!"),
     };
-    
 
     let vis = strct.vis.clone();
     let name = strct.ident.clone();
     let fields = strct.fields.clone();
     let generics = strct.generics.clone();
-    
+
     let lifetimes = generics.lifetimes().cloned().collect::<Vec<_>>();
     let typeparams = generics.type_params().cloned().collect::<Vec<_>>();
-    let genericparams = generics.const_params().cloned().map(|param| param.ident).collect::<Vec<_>>();
+    let genericparams = generics
+        .const_params()
+        .cloned()
+        .map(|param| param.ident)
+        .collect::<Vec<_>>();
 
     let (impl_gen, _, _) = generics.split_for_impl();
 
@@ -39,13 +40,14 @@ pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 Self::__validator__
             }
         }
-    ).into()
+    )
+    .into()
 }
 
 #[proc_macro_attribute]
 pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let f = parse_macro_input!(item as syn::ItemFn);
-    
+
     let vis = f.vis;
     let sig = f.sig;
     let block = f.block;
@@ -53,5 +55,6 @@ pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
     quote!(#vis #sig {
         Self::validate();
         #block
-    }).into()
+    })
+    .into()
 }

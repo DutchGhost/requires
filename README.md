@@ -1,6 +1,6 @@
 # Requires
-Proc macro's for requiring const generics to meet some requirement.
-The requirement must result in a boolean expression.
+Procedural macros for requiring const generics to meet some requirement.
+The requirement can be any arbitrary code, but must result in a boolean expression.
 This expression can be as complex as possible, it only has to be const evaluatable.
 
 There's two macro's that make this happen:

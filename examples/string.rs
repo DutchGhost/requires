@@ -7,7 +7,7 @@ struct Example<const S: &'static str> {
     n: usize,
 }
 
-impl <const S: &'static str> Example<{S}> {
+impl<const S: &'static str> Example<{ S }> {
     #[validate]
     pub fn new(n: usize) -> Self {
         Self { n }
@@ -15,5 +15,5 @@ impl <const S: &'static str> Example<{S}> {
 }
 
 fn main() {
-    Example::<{"Hello world!"}>::new(10);
+    Example::<{ "Hello world!" }>::new(10);
 }

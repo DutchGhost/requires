@@ -3,11 +3,11 @@
 use requires::*;
 
 #[requires(P > 10 && Q < 10)]
-struct Validate<const P :usize, const Q: usize> {
-    n: usize
+struct Validate<const P: usize, const Q: usize> {
+    n: usize,
 }
 
-impl <const P: usize, const Q: usize> Validate<{P}, {Q}> {
+impl<const P: usize, const Q: usize> Validate<{ P }, { Q }> {
     #[validate]
     pub fn new<T: Into<usize>>(n: T) -> Self {
         Self::validate();
@@ -17,5 +17,5 @@ impl <const P: usize, const Q: usize> Validate<{P}, {Q}> {
 }
 
 fn main() {
-    Validate::<{11}, {9}>::new(0usize);
+    Validate::<{ 11 }, { 9 }>::new(0usize);
 }
