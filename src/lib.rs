@@ -44,10 +44,25 @@ pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-#[proc_macro_attribute]
-pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let f = parse_macro_input!(item as syn::ItemFn);
+enum ValidatorApply {
+    Function(syn::ItemFn),
+    ItemImpl(syn::ItemImpl),
+}
 
+impl syn::parse::Parse for ValidatorApply {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let try_parse_fn = input.parse::<syn::ItemFn>();
+
+        if let Ok(function) = try_parse_fn {
+            return Ok(Self::Function(function))
+        }
+
+        let try_parse_item_impl = input.parse::<syn::ItemImpl>()?;
+        Ok(Self::ItemImpl(try_parse_item_impl))
+    }
+}
+
+fn validate_function(f: syn::ItemFn) -> TokenStream {
     let vis = f.vis;
     let sig = f.sig;
     let block = f.block;
@@ -56,5 +71,28 @@ pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
         Self::validate();
         #block
     })
-    .into()
+    .into()   
+}
+
+fn validate_impl_block(mut impl_block: syn::ItemImpl) -> TokenStream {
+     for item in impl_block.items.iter_mut() {
+        let method = match item {
+            syn::ImplItem::Method(method) => method,
+            _ => continue,
+        };
+
+        let insert = quote!(Self::validate();).into();
+        let insert_validate = parse_macro_input!(insert as syn::Stmt);
+        method.block.stmts.insert(0, insert_validate);
+    }
+    quote!(#impl_block).into() 
+}
+
+#[proc_macro_attribute]
+pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let validator = parse_macro_input!(item as ValidatorApply);
+    match validator {
+        ValidatorApply::Function(f) => validate_function(f),
+        ValidatorApply::ItemImpl(item_impl) => validate_impl_block(item_impl)
+    }
 }
