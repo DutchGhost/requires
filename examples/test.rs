@@ -10,8 +10,6 @@ struct Validate<const P: usize, const Q: usize> {
 impl<const P: usize, const Q: usize> Validate<{ P }, { Q }> {
     #[validate]
     pub fn new<T: Into<usize>>(n: T) -> Self {
-        Self::validate();
-
         Self { n: n.into() }
     }
 }

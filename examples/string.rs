@@ -7,11 +7,13 @@ struct Example<const S: &'static str> {
     n: usize,
 }
 
+#[validate]
 impl<const S: &'static str> Example<{ S }> {
-    #[validate]
     pub fn new(n: usize) -> Self {
         Self { n }
     }
+
+    pub fn test() {}
 }
 
 fn main() {
