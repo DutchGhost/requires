@@ -1,5 +1,3 @@
-#![feature(const_generics)]
-
 use requires::*;
 
 #[requires(P > 10 && Q < 10)]
@@ -15,5 +13,7 @@ impl<const P: usize, const Q: usize> Validate<{ P }, { Q }> {
 }
 
 fn main() {
-    Validate::<{ 11 }, { 9 }>::new(0usize);
+    Validate::<{ 11 }, { 11 }>::new(0usize);
+
+    dbg!("DONE");
 }
