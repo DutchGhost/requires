@@ -10,8 +10,6 @@ There's two macro's that make this happen:
 `#[requires]` sets op the requirement for the const generics.
 In order to validate whether the const generics indeed meet the requirement, use `#[validate]` on the constructor for the type, e.g:
 ```Rust
-#![feature(const_generics)]
-
 use requires::*;
 
 // Setup the requirement for P and Q.
@@ -40,7 +38,7 @@ fn main() {
 
 or another more complex example:
 ```Rust
-#![feature(const_generics)]
+#![feature(adt_const_params)]
 
 use requires::*;
 
