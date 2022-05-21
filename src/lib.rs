@@ -18,7 +18,7 @@ pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let vis = strct.vis.clone();
     let name = strct.ident.clone();
     let fields = strct.fields.clone();
-    let generics = strct.generics.clone();
+    let generics = strct.generics;
 
     let lifetimes = generics.lifetimes().cloned().collect::<Vec<_>>();
     let typeparams = generics.type_params().cloned().collect::<Vec<_>>();
@@ -34,11 +34,7 @@ pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #vis struct #name #generics
             #fields
         impl #impl_gen #name <#(#lifetimes),* #(#typeparams),* #({#genericparams}),* > {
-            const __validator__: () = [()][!(#expr) as usize];
-
-            const fn validate() -> () {
-                Self::__validator__
-            }
+            const __VALIDATE: () = assert!(#expr);
         }
     )
     .into()
@@ -54,7 +50,7 @@ impl syn::parse::Parse for ValidatorApply {
         let try_parse_fn = input.parse::<syn::ItemFn>();
 
         if let Ok(function) = try_parse_fn {
-            return Ok(Self::Function(function))
+            return Ok(Self::Function(function));
         }
 
         let try_parse_item_impl = input.parse::<syn::ItemImpl>()?;
@@ -68,24 +64,24 @@ fn validate_function(f: syn::ItemFn) -> TokenStream {
     let block = f.block;
 
     quote!(#vis #sig {
-        Self::validate();
+        Self::__VALIDATE;
         #block
     })
-    .into()   
+    .into()
 }
 
 fn validate_impl_block(mut impl_block: syn::ItemImpl) -> TokenStream {
-     for item in impl_block.items.iter_mut() {
+    for item in impl_block.items.iter_mut() {
         let method = match item {
             syn::ImplItem::Method(method) => method,
             _ => continue,
         };
 
-        let insert = quote!(Self::validate();).into();
+        let insert = quote!(Self::__VALIDATE;).into();
         let insert_validate = parse_macro_input!(insert as syn::Stmt);
         method.block.stmts.insert(0, insert_validate);
     }
-    quote!(#impl_block).into() 
+    quote!(#impl_block).into()
 }
 
 #[proc_macro_attribute]
@@ -93,6 +89,6 @@ pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let validator = parse_macro_input!(item as ValidatorApply);
     match validator {
         ValidatorApply::Function(f) => validate_function(f),
-        ValidatorApply::ItemImpl(item_impl) => validate_impl_block(item_impl)
+        ValidatorApply::ItemImpl(item_impl) => validate_impl_block(item_impl),
     }
 }
