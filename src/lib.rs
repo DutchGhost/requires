@@ -1,5 +1,6 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 
 use quote::quote;
 
@@ -7,14 +8,27 @@ use syn::parse_macro_input;
 
 #[proc_macro_attribute]
 pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let expr = parse_macro_input!(_attr as syn::Expr);
+    let mut expr = parse_macro_input!(_attr as syn::Expr);
     let strct = parse_macro_input!(item as syn::Item);
+
+    let mut require_name = syn::Ident::new("__VALIDATE__blank", Span::call_site());
+    if let syn::Expr::Assign(ref assign_expr) = expr {
+        if let syn::Expr::Path(ref path) = *assign_expr.left {
+            let ident = &path.path.segments[0].ident;
+            require_name = syn::Ident::new(&format!("__VALIDATE__{}", ident), Span::call_site());
+        }
+
+        if let syn::Expr::Binary(_) = *assign_expr.right {
+            expr = *assign_expr.right.clone();
+        }
+    }
 
     let strct = match strct {
         syn::Item::Struct(s) => s,
         _ => panic!("Expected a struct!"),
     };
 
+    let attrs = strct.attrs.clone();
     let vis = strct.vis.clone();
     let name = strct.ident.clone();
     let fields = strct.fields.clone();
@@ -30,14 +44,15 @@ pub fn requires(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let (impl_gen, _, _) = generics.split_for_impl();
 
-    quote! (
+    dbg!(quote! (
+        #(#attrs)*
         #vis struct #name #generics
             #fields
         impl #impl_gen #name <#(#lifetimes),* #(#typeparams),* #({#genericparams}),* > {
-            const __VALIDATE: () = assert!(#expr);
+            pub const #require_name: () = assert!(#expr);
         }
     )
-    .into()
+    .into())
 }
 
 enum ValidatorApply {
@@ -58,26 +73,29 @@ impl syn::parse::Parse for ValidatorApply {
     }
 }
 
-fn validate_function(f: syn::ItemFn) -> TokenStream {
+fn validate_function(f: syn::ItemFn, require_name: syn::Ident) -> TokenStream {
     let vis = f.vis;
     let sig = f.sig;
     let block = f.block;
 
-    quote!(#vis #sig {
-        Self::__VALIDATE;
+    let require_name = syn::Ident::new(&format!("__VALIDATE__{}", require_name), Span::call_site());
+    dbg!(quote!(#vis #sig {
+        Self::#require_name;
         #block
     })
-    .into()
+    .into())
 }
 
-fn validate_impl_block(mut impl_block: syn::ItemImpl) -> TokenStream {
+fn validate_impl_block(mut impl_block: syn::ItemImpl, require_name: syn::Ident) -> TokenStream {
     for item in impl_block.items.iter_mut() {
         let method = match item {
             syn::ImplItem::Method(method) => method,
             _ => continue,
         };
 
-        let insert = quote!(Self::__VALIDATE;).into();
+        let require_name =
+            syn::Ident::new(&format!("__VALIDATE__{}", require_name), Span::call_site());
+        let insert = quote!(Self::#require_name;).into();
         let insert_validate = parse_macro_input!(insert as syn::Stmt);
         method.block.stmts.insert(0, insert_validate);
     }
@@ -86,9 +104,15 @@ fn validate_impl_block(mut impl_block: syn::ItemImpl) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn validate(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let require_name = if _attr.is_empty() {
+        syn::Ident::new("blank", Span::call_site())
+    } else {
+        parse_macro_input!(_attr as syn::Ident)
+    };
+    dbg!(&require_name);
     let validator = parse_macro_input!(item as ValidatorApply);
     match validator {
-        ValidatorApply::Function(f) => validate_function(f),
-        ValidatorApply::ItemImpl(item_impl) => validate_impl_block(item_impl),
+        ValidatorApply::Function(f) => validate_function(f, require_name),
+        ValidatorApply::ItemImpl(item_impl) => validate_impl_block(item_impl, require_name),
     }
 }
